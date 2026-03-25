@@ -29,33 +29,46 @@ export const parseFaturaPDF = async (file: File): Promise<ParsedBillData> => {
 
     // REGEX STRATEGY (Specifically for Equatorial Pará / Similar Layouts)
 
-    // 1. UC / INSTALAÇÃO (Looking for numbers after 'INSTALAÇÃO:')
-    const ucMatch = fullText.match(/INSTALAÇÃO:\s*(\d+)/i) || fullText.match(/Instalação:\s*(\d+)/i);
+    // 1. UC / INSTALAÇÃO / CONTA CONTRATO
+    const ucMatch = fullText.match(/INSTALAÇÃO:\s*(\d+)/i)
+        || fullText.match(/Instalação:\s*(\d+)/i)
+        || fullText.match(/CONTA CONTRATO:\s*(\d+)/i)
+        || fullText.match(/Nº DA INSTALAÇÃO:\s*(\d+)/i);
     const uc = ucMatch ? ucMatch[1] : 'N/A';
 
-    // 2. COMPETENCY (Looking for MM/YYYY pattern near 'Mês/Ano' or 'Conta Mês')
+    // 2. COMPETENCY
     const compMatch = fullText.match(/(\d{2}\/\d{4})/);
     const competency = compMatch ? compMatch[1] : 'N/A';
 
-    // 3. TOTAL VALUE (Looking for R$ XX,XX)
-    // Equatorial Pará has "Total a Pagar" field
-    const valueMatch = fullText.match(/Total a Pagar\s*R\$\s*([\d,.]+)/i) || fullText.match(/R\$\s*([\d,.]+)/);
-    const totalValue = valueMatch ? parseFloat(valueMatch[1].replace('.', '').replace(',', '.')) : 0;
+    // 3. TOTAL VALUE
+    const valueMatch = fullText.match(/Total a Pagar\s*R\$\s*([\d,.]+)/i)
+        || fullText.match(/VALOR A PAGAR\s*R\$\s*([\d,.]+)/i)
+        || fullText.match(/R\$\s*([\d,.]+)/);
+    const totalValueText = valueMatch ? valueMatch[1] : '0';
+    const totalValue = parseFloat(totalValueText.replace(/\./g, '').replace(',', '.'));
 
     // 4. CONSUMO COMPENSADO (kWh)
-    // "Consumo Compensado (kWh) 249"
-    const consMatch = fullText.match(/Consumo Compensado\s*\(kWh\)\s*(\d+)/i);
+    const consMatch = fullText.match(/Consumo Compensado\s*\(kWh\)\s*(\d+)/i)
+        || fullText.match(/Energia Compensada\s*\(kWh\)\s*(\d+)/i);
     const consumption = consMatch ? parseInt(consMatch[1]) : 0;
 
     // 5. ENERGIA INJETADA (kWh)
-    // "Energia Ativa Injetada (kWh) 368"
-    const injMatch = fullText.match(/Energia Ativa Injetada\s*\(kWh\)\s*(\d+)/i);
+    const injMatch = fullText.match(/Energia Ativa Injetada\s*\(kWh\)\s*(\d+)/i)
+        || fullText.match(/Injetada\s*\(kWh\)\s*(\d+)/i);
     const injectedEnergy = injMatch ? parseInt(injMatch[1]) : 0;
 
-    // 6. CIP / STREET LIGHTING
-    // "Cip-Ilum Pub-Pref Munic R$ 56,19"
-    const cipMatch = fullText.match(/Cip-Ilum Pub-Pref Munic\s*R\$\s*([\d,.]+)/i);
-    const streetLighting = cipMatch ? parseFloat(cipMatch[1].replace('.', '').replace(',', '.')) : 0;
+    // 6. CIP / STREET LIGHTING (Taxa de Iluminação Pública)
+    const cipMatch = fullText.match(/Cip-Ilum Pub-Pref Munic\s*R\$\s*([\d,.]+)/i)
+        || fullText.match(/TAXA DE ILUMINAÇÃO PÚBLICA\s*R\$\s*([\d,.]+)/i)
+        || fullText.match(/COSIP\s*R\$\s*([\d,.]+)/i);
+    const streetLightingText = cipMatch ? cipMatch[1] : '0';
+    const streetLighting = parseFloat(streetLightingText.replace(/\./g, '').replace(',', '.'));
+
+    // Confidence Level Check
+    const isUCOk = uc !== 'N/A';
+    const isValOk = totalValue > 0;
+    const isCIPOk = streetLighting > 0;
+    const confidence = (isUCOk && isValOk && isCIPOk) ? 1.0 : (isUCOk && isValOk) ? 0.9 : 0.5;
 
     return {
         uc,
@@ -64,6 +77,6 @@ export const parseFaturaPDF = async (file: File): Promise<ParsedBillData> => {
         consumption,
         injectedEnergy,
         streetLighting,
-        confidence: (uc !== 'N/A' && totalValue > 0) ? 0.95 : 0.5
+        confidence
     };
 };

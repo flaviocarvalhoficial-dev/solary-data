@@ -63,7 +63,7 @@ const ClientsListView: React.FC<ClientsListViewProps> = ({
                         <thead>
                             <tr>
                                 <th style={{ width: 36 }}><input type="checkbox" /></th>
-                                <th>Cliente</th><th>Cidade / Local</th><th>Geração</th><th>Data Inst.</th><th>Status</th><th>Fatura</th><th style={{ width: 48 }}>PDF</th>
+                                <th>Cliente</th><th>Cidade / Local</th><th>Geração Total</th><th>Hoje</th><th>Data Inst.</th><th>Status ECU</th><th>Competência</th><th style={{ width: 48 }}>PDF</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -87,14 +87,24 @@ const ClientsListView: React.FC<ClientsListViewProps> = ({
                                         <div style={{ fontWeight: 500, fontSize: '13px' }}>{(ac as any).city || '—'}</div>
                                         <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>UC {ac.uc}</div>
                                     </td>
-                                    <td>{ac.generation > 0 ? `${ac.generation.toFixed(0)} kWh` : 'API pendente'}</td>
-                                    <td style={{ fontSize: '13px' }}>{ac.activation_date ? new Date(ac.activation_date).toLocaleDateString('pt-BR') : '—'}</td>
-                                    <td>
-                                        <span className={`badge badge-${(ac as any).api_status === 'Normal' ? 'cold' : (ac as any).api_status === 'Atenção' ? 'warm' : (ac as any).api_status === 'Erro' ? 'hot' : 'muted'}`} style={{ fontSize: '11px' }}>
-                                            {(ac as any).api_status || 'Offline'}
-                                        </span>
+                                    <td>{ac.generation > 0 ? `${ac.generation.toFixed(1)} kWh` : 'API pendente'}</td>
+                                    <td style={{ fontWeight: 700, color: (ac as any).energy_today > 0 ? '#10B981' : 'var(--color-text-muted)' }}>
+                                        {(ac as any).energy_today ? `${(ac as any).energy_today.toFixed(1)} kWh` : '—'}
                                     </td>
-                                    <td>{ac.latestBill ? ac.latestBill.competency : '—'}</td>
+                                    <td style={{ fontSize: '12px' }}>{ac.activation_date ? new Date(ac.activation_date).toLocaleDateString('pt-BR') : '—'}</td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: (ac as any).api_status === 'Normal' ? '#10B981' : (ac as any).api_status === 'Atenção' ? '#F59E0B' : '#DC2626' }}></div>
+                                            <span style={{ fontSize: '12px', fontWeight: 500 }}>{(ac as any).api_status || 'Offline'}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span className={`badge badge-${ac.status === 'Completo' ? 'cold' : ac.status === 'Divergente' ? 'warm' : 'hot'}`} style={{ fontSize: '11px' }}>
+                                                {ac.latestBill ? ac.latestBill.competency : 'Vazio'}
+                                            </span>
+                                        </div>
+                                    </td>
                                     <td>
                                         <button className="btn btn-outline" title="Exportar PDF" style={{ padding: '4px 8px' }} onClick={e => { e.stopPropagation(); handleExportPDF(ac); }}>
                                             <Download size={13} />

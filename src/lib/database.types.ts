@@ -52,6 +52,8 @@ export interface Database {
                     country: string | null
                     system_size: number | null
                     system_type: string | null
+                    energy_today: number | null
+                    last_api_sync: string | null
                 }
                 Insert: {
                     user_id: string

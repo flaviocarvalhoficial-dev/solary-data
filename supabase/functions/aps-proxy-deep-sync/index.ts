@@ -26,14 +26,17 @@ serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
     try {
-        const { action, system_id, page = 1, size = 100 } = await req.json();
+        const body = await req.json();
+        const { action, system_id, page = 1, size = 100 } = body;
+
         const appId = Deno.env.get('APSYSTEMS_APP_ID')?.trim().replace(/"/g, "") || '';
         const appSecret = Deno.env.get('APSYSTEMS_APP_SECRET')?.trim().replace(/"/g, "") || '';
 
-        if (!appId || !appSecret) throw new Error("Credentials missing.");
+        if (!appId || !appSecret) throw new Error("Credentials missing in environment variables.");
 
         let rawPath = "";
         let method = "GET";
+
         if (action === 'list') {
             rawPath = "/installer/api/v2/systems";
             method = "POST";
@@ -45,21 +48,26 @@ serve(async (req) => {
             method = "GET";
         }
 
-        const path = normalizePath(rawPath);
-        const timestamp = Date.now().toString();
-        const nonce = crypto.randomUUID().replace(/-/g, "");
-        const signatureMethod = "HmacSHA256";
+        // Normalização Oficial: O RequestPath na assinatura é apenas o ÚLTIMO segmento da URL
+        const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+        // Exemplo: /installer/api/v2/systems -> systems
+        const requestPathForSignature = (path.split('/').filter(Boolean).pop() || '').trim();
 
-        const stringToSign = [timestamp, nonce, appId, path, method, signatureMethod].join('/');
+        const timestamp = Date.now().toString().trim();
+        const nonce = crypto.randomUUID().replace(/-/g, "").trim();
+        const signatureMethod = "HmacSHA256".trim();
+        const appIdClean = appId.trim();
 
-        const signature = await hmacSha256(appSecret, stringToSign);
+        // Formato: timestamp/nonce/appId/requestPath/method/signatureMethod
+        const stringToSign = [timestamp, nonce, appIdClean, requestPathForSignature, method.trim(), signatureMethod].join('/');
+        const signature = await hmacSha256(appSecret.trim(), stringToSign);
 
         const baseUrl = 'https://api.apsystemsema.com:9282';
         const finalUrl = `${baseUrl}${path}`;
 
         const headers = {
             "X-CA-AppId": appId,
-            "X-CA-Key": appId, // Legacy compatibility
+            "X-CA-Key": appId,
             "X-CA-Timestamp": timestamp,
             "X-CA-Nonce": nonce,
             "X-CA-Signature-Method": signatureMethod,
@@ -80,13 +88,18 @@ serve(async (req) => {
             success: true,
             data,
             audit: {
-                appId,
-                rawPath,
+                "[SIGNATURE DEBUG]": {
+                    timestamp,
+                    nonce,
+                    appId: appIdClean,
+                    requestPath: requestPathForSignature,
+                    method: method.trim(),
+                    stringToSign,
+                    signatureBase64: signature
+                },
+                action,
                 path,
-                method,
-                stringToSign,
-                signature,
-                code: data?.code
+                receivedParams: { page, size, system_id }
             }
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,7 +108,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({
             success: false,
             error: err.message,
-            stack: err.stack
+            audit: { error: true, msg: err.message }
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

@@ -21,6 +21,8 @@ export type ActiveClient = Client & {
     generation: number;
     latestBill: Bill | null;
     status: 'Completo' | 'Divergente' | 'Incompleto';
+    energy_today?: number;
+    api_status?: string;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -38,10 +40,13 @@ export function calcStats(gen: number, bill: Bill, investment: number) {
     const economyValue = gen * tarifaMedia;
     const reductionPercent = (economyValue / (bill.total_value + economyValue)) * 100;
     const payback = investment / (economyValue * 12 || 1);
+    const roi = investment > 0 ? (economyValue * 12 / investment) * 100 : 0;
     return {
         economyValue,
+        annualEconomy: economyValue * 12,
         reductionPercent: reductionPercent.toFixed(0),
         payback: payback.toFixed(1),
+        roi: roi.toFixed(1),
         totalConsumption,
     };
 }
@@ -51,7 +56,7 @@ async function apsFetch(payload: { action: 'list' | 'stats' | 'details'; system_
         body: { ...payload, size: payload.size || 100 }
     });
     if (error || !data?.success) throw new Error(data?.error || 'Erro na conexão com AP-Deep-Sync');
-    return data.data;
+    return data;
 }
 
 function App() {
@@ -73,6 +78,8 @@ function App() {
     const [isImporting, setIsImporting] = useState(false);
     const [importList, setImportList] = useState<any[]>([]);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [syncProgress, setSyncProgress] = useState(0);
+    const [syncTotal, setSyncTotal] = useState(0);
 
     const billMap = useMemo(() => {
         const map = new Map<string, Bill>();
@@ -87,62 +94,116 @@ function App() {
 
     const syncSystemsFromAPI = async () => {
         setIsSyncingAPI(true);
+        setSyncProgress(0);
+        console.log("[SYNC STATUS] Iniciando sincronização profunda com APsystems...");
+
         try {
-            const listResult = await apsFetch({ action: 'list', page: 1, size: 200 });
-            let systems = [];
+            const apiRes = await apsFetch({ action: 'list', page: 1, size: 200 });
+            const listResult = apiRes?.data;
+            console.log("[API RESPONSE] Dados recebidos:", listResult);
+
+            if (listResult?.code === 4000) {
+                console.warn("[API WARNING] Falha de Assinatura/Autenticação (4000). Verifique as credenciais da APsystems.");
+                console.log("[SIGNATURE DEBUG INFO]", apiRes?.audit);
+                setIsSyncingAPI(false);
+                return;
+            }
+
+            let systemsResult: any[] = [];
+
+            // Debug log para identificar o formato real da resposta
+            console.log("[Deep Sync] Raw List Result:", listResult);
+
             const deepData = listResult?.data?.data || listResult?.data || listResult;
-            if (Array.isArray(deepData)) systems = deepData;
-            else if (deepData?.list) systems = deepData.list;
-            else if (deepData?.systems) systems = deepData.systems;
 
-            console.log(`[Deep Sync] Iniciando sincronização de ${systems.length} sistemas...`);
+            if (Array.isArray(deepData)) {
+                systemsResult = deepData;
+            } else {
+                systemsResult = deepData?.systems || deepData?.data?.systems || deepData?.list || deepData?.data?.list || [];
+            }
 
-            for (const sys of systems) {
-                const sid = sys.sid || sys.id || sys.systemId || sys.system_id;
+            if (systemsResult.length === 0) {
+                const errorCode = listResult?.code || deepData?.code;
+                const errorMsg = listResult?.msg || deepData?.msg;
+                console.warn(`[Deep Sync] Nenhum sistema encontrado. Code: ${errorCode}, Msg: ${errorMsg}`);
+
+                if (errorCode && errorCode !== "0" && errorCode !== 0) {
+                    throw new Error(`API APsystems retornou erro ${errorCode}: ${errorMsg || 'Sem mensagem'}`);
+                }
+                setIsSyncingAPI(false);
+                return;
+            }
+
+            if (systemsResult.length > 10 && !confirm(`Encontrados ${systemsResult.length} sistemas. Deseja iniciar a sincronização profunda agora?`)) {
+                setIsSyncingAPI(false);
+                return;
+            }
+
+            setSyncTotal(systemsResult.length);
+            console.log(`[Deep Sync] Iniciando sincronização de ${systemsResult.length} sistemas...`);
+
+            let count = 0;
+            for (const sys of systemsResult) {
+                count++;
+                setSyncProgress(count);
+
+                const sid = sys?.sid || sys?.id || sys?.systemId || sys?.system_id;
+                if (!sid) continue;
 
                 let details: any = null;
                 try {
                     const detailRes = await apsFetch({ action: 'details', system_id: sid });
                     details = detailRes?.data?.data || detailRes?.data || detailRes;
-                } catch (e) { console.warn(`[Deep Sync] Falha detalhes de ${sid}`, e); }
+                } catch (e) { console.warn(`[API WARNING] Falha detalhes do sistema ${sid}`); }
 
                 let stats: any = null;
                 try {
                     const statsRes = await apsFetch({ action: 'stats', system_id: sid });
                     stats = statsRes?.data?.data || statsRes?.data || statsRes;
-                } catch (e) { console.warn(`[Deep Sync] Falha stats de ${sid}`, e); }
+                } catch (e) { console.warn(`[API WARNING] Falha estatísticas para ${sid}`); }
 
-                const name = details?.username || sys.username || sys.customerAccount || sys.sname || `Usina ${sid}`;
-                const city = details?.city || details?.cityName || sys.city || 'Não informada';
-                const state = details?.state || details?.province || sys.state || '—';
-                const systemSize = parseFloat(details?.capacity || sys.capacity || '0');
-                const lastGeneration = parseFloat(stats?.energy || stats?.data?.energy || stats?.todayEnergy || sys.last_generation || '0');
+                // Mapeamento Robusto (GULOSO)
+                const name = details?.sname || details?.username || sys?.sname || sys?.username || `Usina ${sid}`;
+                const city = details?.city || details?.cityName || sys?.city || 'Brasil';
+                const state = details?.state || details?.province || sys?.state || '—';
+                const capacity = parseFloat(details?.capacity || sys?.capacity || '0');
 
-                const existing = clients.find(c => c.system_id === sid);
+                // Geração Total (GULOSO)
+                const generation = parseFloat(stats?.energyTotal || stats?.energy || stats?.data?.energyTotal || sys?.energy_total || '0');
+                const energyToday = parseFloat(stats?.energyToday || stats?.todayEnergy || '0');
+
+                const existing = (clients || []).find(c => c?.system_id === sid);
                 const metaData: any = {
                     name, city, state, country: details?.country || 'Brasil',
-                    ecu_id: Array.isArray(details?.ecu) ? details.ecu[0] : (details?.ecuId || null),
-                    system_size: systemSize, system_type: details?.type || 'Fotovoltaico',
-                    activation_date: details?.createDate || sys.create_date || null,
-                    api_status: (details?.light || sys.light) === 1 ? 'Normal' : (details?.light || sys.light) === 2 ? 'Atenção' : 'Erro',
-                    last_generation: lastGeneration
+                    ecu_id: Array.isArray(details?.ecu) ? details.ecu[0] : (details?.ecuId || details?.data?.ecu?.[0] || null),
+                    system_size: capacity, system_type: details?.type || 'Fotovoltaico',
+                    activation_date: details?.createDate || sys?.create_date || null,
+                    api_status: (details?.light || sys?.light) === 1 ? 'Normal' : (details?.light || sys?.light) === 2 ? 'Atenção' : 'Erro',
+                    last_generation: generation,
+                    energy_today: energyToday,
+                    last_api_sync: new Date().toISOString()
                 };
 
                 if (existing) await updateClient(existing.id, metaData);
-                else await createClient({ ...metaData, uc: `ATENDIMENTO_${sid}`, platform: 'APsystems', system_id: sid, investment: 0 });
+                else await createClient({ ...metaData, uc: `ID_${sid}`, platform: 'APsystems', system_id: sid, investment: 0 });
             }
 
-            await logAuditEvent('SYSTEM_SYNC_BATCH', null, null, { systems_processed: systems.length });
-            alert(`Deep Sync concluído!`);
+            await logAuditEvent('SYSTEM_SYNC_BATCH', null, null, { count: systemsResult.length });
+            alert(`Sincronização de ${systemsResult.length} sistemas concluída!`);
             refetchClients();
-        } catch (err: any) { alert(`Erro no Sync Engine: ${err.message}`); }
-        setIsSyncingAPI(false);
+        } catch (err: any) {
+            console.error("[SYNC STATUS] Erro crítico:", err.message);
+            alert(`Erro no Sync Engine: ${err.message}`);
+        } finally {
+            setIsSyncingAPI(false);
+            setSyncProgress(0);
+        }
     };
 
     const handleFetchSystems = async () => {
         setIsImporting(true);
         try {
-            const result = await apsFetch({ action: 'list' });
+            const result = await apsFetch({ action: 'list', page: 1, size: 200 });
             let systems = [];
             if (Array.isArray(result)) systems = result;
             else if (result?.list) systems = result.list;
@@ -156,16 +217,45 @@ function App() {
 
     const handleImportSystem = async (sys: any) => {
         const id = sys.sid || sys.id || sys.systemId || sys.system_id;
-        const name = sys.sname || sys.name || sys.customerAccount || `Usina ${id}`;
+        const name = sys.username || sys.customerAccount || sys.userAccount || sys.sname || sys.name || `Usina ${id}`;
 
         if (clients.some(c => c.system_id === id)) return alert(`Já cadastrado.`);
 
         try {
-            await createClient({ name, uc: `TEMP_${id}`, platform: 'APsystems', system_id: id, investment: 0 });
-            alert(`Importado!`);
-            setImportList(prev => prev.filter(s => (s.sid || s.id || s.systemId) !== id));
+            await createClient({ name, uc: `PENDENTE_${id}`, platform: 'APsystems', system_id: id, investment: 0 });
+            setImportList(prev => prev.filter(s => (s.sid || s.id || s.systemId || s.system_id) !== id));
             refetchClients();
         } catch (err: any) { alert(`Erro: ${err.message}`); }
+    };
+
+    const handleImportAll = async () => {
+        const toImport = importList.filter(s => {
+            const id = s.sid || s.id || s.systemId || s.system_id;
+            return !clients.some(c => c.system_id === id);
+        });
+
+        if (toImport.length === 0) return alert('Nenhum novo sistema para importar.');
+        if (!confirm(`Deseja importar todos os ${toImport.length} sistemas encontrados?`)) return;
+
+        setIsSyncingAPI(true);
+        setSyncTotal(toImport.length);
+        let count = 0;
+
+        for (const sys of toImport) {
+            count++;
+            setSyncProgress(count);
+            const id = sys.sid || sys.id || sys.systemId || sys.system_id;
+            const name = sys.username || sys.customerAccount || sys.userAccount || sys.sname || sys.name || `Usina ${id}`;
+            try {
+                await createClient({ name, uc: `PENDENTE_${id}`, platform: 'APsystems', system_id: id, investment: 0 });
+            } catch (e) { console.error(`Falha ao importar ${id}`, e); }
+        }
+
+        setIsSyncingAPI(false);
+        setSyncProgress(0);
+        setShowImportModal(false);
+        alert(`${toImport.length} sistemas importados com sucesso!`);
+        refetchClients();
     };
 
     const enrichedClients = useMemo(() =>
@@ -270,7 +360,7 @@ function App() {
                 setIsSavingClient(false);
             }} form={newClientForm} setForm={setNewClientForm} loading={isSavingClient} />
 
-            <ImportModal show={showImportModal} setShow={setShowImportModal} list={importList} onImport={handleImportSystem} />
+            <ImportModal show={showImportModal} setShow={setShowImportModal} list={importList} onImport={handleImportSystem} onImportAll={handleImportAll} />
 
             <Sidebar
                 user={user as any} activeTab={activeTab} setActiveTab={setActiveTab}
@@ -328,6 +418,10 @@ function App() {
                             incompleteCount={enrichedClients.filter(c => c.status === 'Incompleto').length}
                             handleBatchExport={handleBatchExport} isUploading={isUploading}
                             setSelectedClientId={setSelectedClientId} setActiveTab={setActiveTab}
+                            syncSystemsFromAPI={syncSystemsFromAPI}
+                            isSyncingAPI={isSyncingAPI}
+                            syncProgress={syncProgress}
+                            syncTotal={syncTotal}
                         />
                     ) : activeTab === 'Bills' ? (
                         <div className="empty-state">

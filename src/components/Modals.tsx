@@ -61,10 +61,11 @@ interface ImportModalProps {
     setShow: (show: boolean) => void;
     list: any[];
     onImport: (sys: any) => void;
+    onImportAll: () => void;
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({
-    show, setShow, list, onImport
+    show, setShow, list, onImport, onImportAll
 }) => {
     if (!show) return null;
     return (
@@ -91,7 +92,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                         </div>
                     ))}
                 </div>
-                <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => setShow(false)}>Fechar</button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={onImportAll} disabled={list.length === 0}>Importar Todos</button>
+                    <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setShow(false)}>Fechar</button>
+                </div>
             </div>
         </div>
     );
