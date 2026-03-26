@@ -31,7 +31,7 @@ function App() {
     const { user, signOut } = useAuth();
     const { clients, refetch: refetchClients, create: createClient, update: updateClient, remove: removeClient } = useClients();
     const { systems, refetch: refetchSystems, upsert: upsertSystem, update: updateSystem } = useSystems();
-    const { bills, create: createBill, update: updateBill, resetForClient } = useBills();
+    const { bills, refetch: refetchBills, create: createBill, update: updateBill, remove: deleteBill, resetForClient } = useBills();
 
     // State
     const [activeTab, setActiveTab] = useState('Dashboard');
@@ -93,6 +93,7 @@ function App() {
         const files = e.dataTransfer.files;
         if (files && files.length > 0) {
             const ids = await uploadFiles(files, targetClientId);
+            await refetchBills();
             if (ids && ids.length > 0) navigateByProcessedClients(ids);
         }
     };
@@ -104,7 +105,8 @@ function App() {
             const cid = pendingReview.clientId;
             setPendingReview(null);
             alert("Fatura revisada e importada com sucesso!");
-            refetchClients();
+            await refetchClients();
+            await refetchBills();
             navigateByProcessedClients([cid]);
         } catch (err: any) {
             alert(`Erro ao salvar revisão: ${err.message}`);
@@ -141,7 +143,8 @@ function App() {
 
             setUnlinkedBill(null);
             alert("Fatura vinculada e Conta Contrato salva no cadastro do cliente!");
-            refetchClients();
+            await refetchClients();
+            await refetchBills();
 
             // Navegar para o cliente recém-vinculado
             navigateByProcessedClients([finalId]);
@@ -249,8 +252,21 @@ function App() {
             }
             setIsEditing(false);
             refetchClients();
+            refetchBills();
             alert("Dados salvos com sucesso!");
         } catch (err: any) { alert(`Erro: ${err.message}`); }
+    };
+
+    const handleDeleteBill = async (id: string, competency: string) => {
+        if (confirm(`Excluir permanentemente o relatório de ${competency}?`)) {
+            try {
+                await deleteBill(id);
+                // No need for alert here, just sync state
+                await refetchBills();
+            } catch (err: any) {
+                alert(`Erro ao excluir: ${err.message}`);
+            }
+        }
     };
 
     const triggerStartEdit = () => {
@@ -414,6 +430,7 @@ function App() {
                             branding={branding} handleResetData={resetForClient} selectedCompetency={selectedCompetency}
                             setSelectedCompetency={setSelectedCompetency} availableCompetencies={availableCompetencies}
                             clientBills={bills.filter(b => b.client_id === selectedAC.id)}
+                            handleDeleteBill={handleDeleteBill}
                         />
                     ) : activeTab === 'Settings' ? (
                         <SettingsView user={user} branding={branding} setBranding={setBranding} />

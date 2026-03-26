@@ -1,5 +1,4 @@
-import React from 'react';
-import { History } from 'lucide-react';
+import { History, Trash2 } from 'lucide-react';
 import { Bill } from '../hooks/useBills';
 import { calculateFinalReport, ActiveClient } from '../utils/solarHelpers';
 
@@ -8,9 +7,10 @@ interface ReportHistoryProps {
     selectedAC: ActiveClient;
     onView: (competency: string) => void;
     currentCompetency: string;
+    onDelete: (id: string, competency: string) => void;
 }
 
-export const ReportHistory: React.FC<ReportHistoryProps> = ({ clientBills, selectedAC, onView, currentCompetency }) => {
+export const ReportHistory: React.FC<ReportHistoryProps> = ({ clientBills, selectedAC, onView, currentCompetency, onDelete }) => {
     return (
         <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -37,7 +37,7 @@ export const ReportHistory: React.FC<ReportHistoryProps> = ({ clientBills, selec
                                     <td style={{ padding: '12px 0', fontSize: '13px', color: 'var(--color-status-success-text)', fontWeight: 600 }}>
                                         R$ {stats.resultado.economia_mensal.toFixed(2)}
                                     </td>
-                                    <td style={{ padding: '12px 0', textAlign: 'right' }}>
+                                    <td style={{ padding: '12px 0', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                         <button
                                             onClick={() => onView(bill.competency)}
                                             className="btn btn-outline"
@@ -45,6 +45,13 @@ export const ReportHistory: React.FC<ReportHistoryProps> = ({ clientBills, selec
                                             disabled={currentCompetency === bill.competency}
                                         >
                                             Ver
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete(bill.id, bill.competency)}
+                                            style={{ background: 'none', border: 'none', color: 'var(--color-status-danger-text)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', opacity: 0.7 }}
+                                            title="Excluir este registro"
+                                        >
+                                            <Trash2 size={14} />
                                         </button>
                                     </td>
                                 </tr>

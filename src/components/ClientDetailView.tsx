@@ -37,6 +37,7 @@ interface ClientDetailViewProps {
     handleDragOver: (e: React.DragEvent) => void;
     handleDragLeave: (e: React.DragEvent) => void;
     isDragging: boolean;
+    handleDeleteBill: (id: string, competency: string) => void;
 }
 
 const ClientDetailView: React.FC<ClientDetailViewProps> = ({
@@ -45,7 +46,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({
     selectedCompetency, setSelectedCompetency, availableCompetencies, clientBills,
     setSelectedClientId, handleExportPDF, syncSystemsFromAPI, isSyncingAPI,
     handleFileUpload, isUploading, branding,
-    handleDrop, handleDragOver, handleDragLeave, isDragging
+    handleDrop, handleDragOver, handleDragLeave, isDragging, handleDeleteBill
 }) => {
     const [showReviewModal, setShowReviewModal] = React.useState(false);
 
@@ -215,6 +216,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                 <ReportHistory
                     clientBills={clientBills} selectedAC={selectedAC}
                     onView={setSelectedCompetency} currentCompetency={selectedCompetency}
+                    onDelete={handleDeleteBill}
                 />
             </div>
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 
@@ -9,10 +9,6 @@ export function useBills() {
     const [bills, setBills] = useState<Bill[]>([]);
     const [loading, setLoading] = useState(false);
 
-    /**
-     * Fetch bills for one client OR all clients of the current user.
-     * Pass clientId for single-client load, or omit to load all.
-     */
     const fetch = useCallback(async (clientId?: string) => {
         setLoading(true);
 
@@ -30,6 +26,11 @@ export function useBills() {
         setLoading(false);
     }, []);
 
+    // Load initial bills
+    useEffect(() => {
+        fetch();
+    }, [fetch]);
+
     const create = async (input: BillInsert): Promise<Bill> => {
         const { data, error } = await supabase
             .from('bills')
@@ -43,9 +44,12 @@ export function useBills() {
     };
 
     const update = async (id: string, input: Partial<BillInsert>): Promise<Bill> => {
+        // Strip read-only fields to avoid Supabase errors if any
+        const { id: _, created_at: __, ...updatePayload } = input as any;
+
         const { data, error } = await supabase
             .from('bills')
-            .update(input)
+            .update(updatePayload)
             .eq('id', id)
             .select()
             .single();
@@ -67,5 +71,5 @@ export function useBills() {
         setBills(prev => prev.filter(b => b.client_id !== clientId));
     };
 
-    return { bills, setBills, loading, fetch, create, update, remove, resetForClient };
+    return { bills, setBills, loading, fetch, refetch: fetch, create, update, remove, resetForClient };
 }
