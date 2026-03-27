@@ -102,10 +102,59 @@ const ClientsListView: React.FC<ClientsListViewProps> = ({
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <button className="btn btn-primary" title="Adicionar Novo Sistema" style={{ borderRadius: '8px', fontSize: '12px', padding: '8px 12px', whiteSpace: 'nowrap' }} onClick={() => setShowNewClientModal(true)}>
+                    {platformFilter !== 'Todas' && (
+                        <a
+                            href={platformFilter === 'APsystems' ? 'https://apsystemsema.com/ema/index.action' : platformFilter === 'Sungrow' ? 'https://www.isolarcloud.com/' : 'https://www.semsportal.com/'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-icon"
+                            title={`Acessar Portal ${platformFilter}`}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                color: 'var(--color-primary)',
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                textDecoration: 'none',
+                                borderRadius: '8px',
+                                background: 'transparent'
+                            }}
+                        >
+                            <ExternalLink size={14} /> <span>Portal {platformFilter}</span>
+                        </a>
+                    )}
+                    <button
+                        className="btn"
+                        title="Adicionar Novo Sistema"
+                        style={{
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            padding: '8px 12px',
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#f3f3f3',
+                            border: '1px solid #D44E33',
+                            color: '#D44E33'
+                        }}
+                        onClick={() => setShowNewClientModal(true)}
+                    >
                         <Plus size={14} /> Novo Sistema
                     </button>
-                    <button className="btn btn-outline" title="Dados em Massa (XLS)" style={{ borderRadius: '8px', fontSize: '12px', padding: '8px 12px', whiteSpace: 'nowrap' }} onClick={() => setShowXLSImportModal && setShowXLSImportModal(true)}>
+                    <button
+                        className="btn"
+                        title="Dados em Massa (XLS)"
+                        style={{
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            padding: '8px 12px',
+                            whiteSpace: 'nowrap',
+                            backgroundColor: '#f3f3f3',
+                            border: '1px solid #D44E33',
+                            color: '#D44E33'
+                        }}
+                        onClick={() => setShowXLSImportModal && setShowXLSImportModal(true)}
+                    >
                         <Plus size={14} /> Importar XLS
                     </button>
                 </div>

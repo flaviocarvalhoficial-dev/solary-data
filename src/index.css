@@ -119,10 +119,13 @@ body {
 }
 
 .sidebar.collapsed .sidebar-item {
-    justify-content: center;
-    padding: 16px 0;
-    width: 100%;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 12px 0 !important;
+    width: 100% !important;
     gap: 0 !important;
+    margin: 4px 0;
 }
 
 .sidebar.collapsed .sidebar-item svg {
@@ -332,18 +335,6 @@ body {
     color: var(--color-text-muted);
 }
 
-.sidebar {
-    width: var(--sidebar-width);
-    min-height: 100vh;
-    background: var(--color-bg-sidebar);
-    border-right: 1px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 100;
-}
 
 .sidebar-group-label {
     font-size: 10px;

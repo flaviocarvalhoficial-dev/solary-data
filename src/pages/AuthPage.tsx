@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 type Mode = 'login' | 'signup';
@@ -43,14 +43,8 @@ const AuthPage: React.FC = () => {
                 // No shadow as per flat-first rule
             }}>
                 {/* Logo Section */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px', justifyContent: 'center' }}>
-                    <div style={{
-                        padding: '6px', background: 'rgba(232,89,60, 0.10)', borderRadius: '8px',
-                        color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <Sun size={24} fill="currentColor" strokeWidth={2.5} />
-                    </div>
-                    <h1 className="text-logo-handwritten" style={{ fontSize: '28px', lineHeight: 1 }}>Watts</h1>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px', justifyContent: 'center' }}>
+                    <img src="/logotipooficial.svg" alt="Watts Logo" style={{ height: '40px', width: 'auto' }} />
                 </div>
 
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -153,9 +147,10 @@ const AuthPage: React.FC = () => {
                 </div>
             </div>
 
-            <div style={{ position: 'absolute', bottom: '32px', textAlign: 'center', width: '100%' }}>
-                <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    Watts • Powered by Veselty Engine
+            <div style={{ position: 'absolute', bottom: '32px', textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <img src="/favicon.svg" alt="Watts Mark" style={{ height: '20px', width: 'auto' }} />
+                <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Powered by Veselty Engine
                 </p>
             </div>
         </div>

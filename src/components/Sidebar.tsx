@@ -5,7 +5,6 @@ import {
     ChevronDown, ChevronRight
 } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
-import WattsMascot from './WattsMascot';
 
 interface SidebarProps {
     user: User | null;
@@ -51,9 +50,20 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
         <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
             <div className="logo-toggle-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isCollapsed ? '0' : '12px 8px', marginBottom: '24px' }}>
-                <div className="mascot-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <WattsMascot state="normal" size={isCollapsed ? 32 : 36} />
-                    <h1 className="text-logo-handwritten" style={{ fontSize: '32px', lineHeight: 1, marginLeft: '4px' }}>Watts</h1>
+                <div
+                    className="logo-container"
+                    onClick={() => { setActiveTab('Dashboard'); setSelectedClientId(null); }}
+                    style={{ display: 'flex', alignItems: 'center', padding: isCollapsed ? '0' : '4px', cursor: 'pointer' }}
+                >
+                    <img
+                        src={isCollapsed ? "/favicon.svg" : "/logotipooficial.svg"}
+                        alt="Watts Logo"
+                        style={{
+                            height: isCollapsed ? '28px' : '32px',
+                            width: 'auto',
+                            transition: 'all 0.2s ease'
+                        }}
+                    />
                 </div>
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
@@ -118,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </a>
                 </nav>
 
-                <div style={{ height: '1px', background: 'var(--color-border)', margin: '16px 12px', opacity: 0.5 }} />
+                <div style={{ height: '1px', background: 'var(--color-border)', margin: isCollapsed ? '16px 8px' : '16px 12px', opacity: 0.5 }} />
 
                 <nav className="sidebar-group">
                     <a href="#" className={`sidebar-item ${activeTab === 'Settings' && !selectedClientId ? 'active' : ''}`}
@@ -167,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         width: isCollapsed ? '40px' : '32px',
                         height: isCollapsed ? '40px' : '32px',
                         borderRadius: '50%',
-                        background: 'var(--color-primary)',
+                        background: user?.user_metadata?.avatar_url ? 'transparent' : 'var(--color-primary)',
                         color: '#fff',
                         display: 'flex',
                         alignItems: 'center',
@@ -175,9 +185,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                         fontWeight: 600,
                         fontSize: isCollapsed ? '16px' : '13px',
                         flexShrink: 0,
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        overflow: 'hidden',
+                        border: user?.user_metadata?.avatar_url ? '1px solid var(--color-border)' : 'none'
                     }}>
-                        {userInitial}
+                        {user?.user_metadata?.avatar_url ? (
+                            <img src={user.user_metadata.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            userInitial
+                        )}
                     </div>
                     <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>

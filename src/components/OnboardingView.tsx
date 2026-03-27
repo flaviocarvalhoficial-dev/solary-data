@@ -11,7 +11,9 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
         <div className="onboarding-screen">
             <div className="onboarding-hero">
                 <WattsMascot state="saudando" size={320} className="mx-auto mb-6" />
-                <h1 className="onboarding-title" style={{ fontFamily: "'Caveat', cursive", fontSize: '48px' }}>Bem-vindo ao Watts</h1>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '24px' }}>
+                    <img src="/logotipooficial.svg" alt="Watts Logo" style={{ height: '64px', width: 'auto' }} />
+                </div>
                 <p className="onboarding-subtitle">
                     Sua nova plataforma de inteligência operacional para gestão de frotas solares.
                     Vamos configurar seu ambiente em poucos passos.

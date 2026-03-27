@@ -12,6 +12,7 @@ import { useBillUpload } from './hooks/useBillUpload';
 import { useSolarSync } from './hooks/useSolarSync';
 import { useEnrichedClients } from './hooks/useEnrichedClients';
 import { useExport } from './hooks/useExport';
+import { useFleetHistory } from './hooks/useFleetHistory';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -74,6 +75,8 @@ function App() {
     const { uploadFiles, handleFileUpload, isUploading, unlinkedBill, setUnlinkedBill, pendingReview, setPendingReview, processSingleBill } = useBillUpload({
         clients, systems, createClient, updateClient, createBill, refetchClients
     });
+
+    const { history, recordSnapshot } = useFleetHistory(user?.id);
 
     const [isDragging, setIsDragging] = useState(false);
 
@@ -206,7 +209,9 @@ function App() {
 
     const filteredClients = useMemo(() =>
         enrichedClients.filter(c => {
-            const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.uc.includes(searchTerm);
+            const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.uc.includes(searchTerm) ||
+                (c.city || '').toLowerCase().includes(searchTerm.toLowerCase());
             const matchStatus = statusFilter === 'Todos' || c.status === statusFilter;
             const matchPlatform = platformFilter === 'Todas' || c.platform === platformFilter;
 
@@ -436,8 +441,8 @@ function App() {
                         <SettingsView user={user} branding={branding} setBranding={setBranding} />
                     ) : activeTab === 'Dashboard' ? (
                         <DashboardView
-                            clients={clients} enrichedClients={enrichedClients}
-                            totalGeneration={enrichedClients.reduce((a, c) => a + (c.generation || 0), 0)}
+                            clients={filteredClients} enrichedClients={filteredClients}
+                            totalGeneration={filteredClients.reduce((a, c) => a + (c.generation || 0), 0)}
                             totalEconomy={enrichedClients.reduce((a, c) => {
                                 const bill = c.latestBill;
                                 if (!bill) return a;
@@ -448,6 +453,7 @@ function App() {
                             setSelectedClientId={setSelectedClientId} setActiveTab={setActiveTab}
                             syncSystemsFromAPI={() => syncSystemsFromAPI()} isSyncingAPI={isSyncingAPI}
                             syncProgress={syncProgress} syncTotal={syncTotal}
+                            history={history} recordSnapshot={recordSnapshot}
                         />
                     ) : activeTab === 'Bills' ? (
                         <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '40px 20px' }}>
@@ -467,10 +473,8 @@ function App() {
                                 onDrop={(e) => handleDrop(e)}
                             >
                                 <div style={{ marginBottom: '32px', position: 'relative', display: 'inline-block' }}>
-                                    <WattsMascot state={isDragging ? 'celebrando' : 'saudando'} size={160} />
-                                    <div style={{ position: 'absolute', bottom: '-10px', right: '-10px', background: 'var(--color-primary)', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(232, 89, 60, 0.3)' }}>
-                                        <Plus size={24} />
-                                    </div>
+                                    <img src="/src/Mascote Watss/celebrando.svg" alt="Watts Mascote" style={{ width: '160px', height: 'auto' }} />
+
                                 </div>
                                 <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '16px', letterSpacing: '-0.02em' }}>
                                     {isDragging ? 'Solte para Iniciar!' : 'Central de Processamento de Faturas'}

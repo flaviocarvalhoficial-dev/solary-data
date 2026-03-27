@@ -1,0 +1,5 @@
+# robots.txt for Watts Solar Data
+User-agent: *
+Allow: /
+
+Sitemap: https://watts-data.example.com/sitemap.xml

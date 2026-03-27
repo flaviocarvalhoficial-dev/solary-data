@@ -5,6 +5,8 @@ import {
     Clock, Wallet, CheckCircle2, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 
+// import WattsLogo from './WattsLogo';
+
 interface ExecutiveReportProps {
     data: FinalReportObject;
     branding?: {
@@ -21,7 +23,7 @@ const ExecutiveReport: React.FC<ExecutiveReportProps> = ({ data, branding }) => 
     // Fallbacks
     const primaryColor = branding?.primary_color || '#6366F1';
     const companyName = branding?.company_name || 'WATTS';
-    const logoUrl = branding?.logo_url || null;
+    const logoUrl = branding?.logo_url || '/logo.svg';
     const reportFooter = branding?.report_footer || 'Este relatório foi gerado automaticamente pelo sistema Watts.';
 
     const formatCurrency = (val: number) =>
@@ -202,14 +204,7 @@ const ExecutiveReport: React.FC<ExecutiveReportProps> = ({ data, branding }) => 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)', fontSize: '10px', fontWeight: 500 }}>
                         <span>Gerado com</span>
-                        <span style={{
-                            fontFamily: "'Caveat', cursive",
-                            fontSize: '18px',
-                            color: 'var(--color-primary)',
-                            fontWeight: 700,
-                            marginLeft: '2px',
-                            lineHeight: 1
-                        }}>Watts</span>
+                        <img src="/logotipooficial.svg" alt="Watts Logo" style={{ height: '14px', width: 'auto' }} />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '9px', color: '#D1D5DB' }}>
                         <span>Modo: {data.modo_relatorio.toUpperCase()}</span>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, Zap, TrendingUp, AlertCircle, RefreshCw, ChevronRight, FileArchive } from 'lucide-react';
 import { ActiveClient } from '../utils/solarHelpers';
+import { FleetHistoryEntry } from '../hooks/useFleetHistory';
 import WattsMascot from './WattsMascot';
 
 interface DashboardViewProps {
@@ -17,6 +18,8 @@ interface DashboardViewProps {
     isSyncingAPI: boolean;
     syncProgress: number;
     syncTotal: number;
+    history?: FleetHistoryEntry[];
+    recordSnapshot?: (stats: any) => void;
 }
 
 const DashboardView: React.FC<DashboardViewProps> = ({
@@ -32,14 +35,39 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     syncSystemsFromAPI,
     isSyncingAPI,
     syncProgress,
-    syncTotal
+    syncTotal,
+    history = [],
+    recordSnapshot
 }) => {
+    // Record current stats to history if they look healthy and it's the first time today
+    React.useEffect(() => {
+        if (recordSnapshot && clients.length > 0) {
+            recordSnapshot({
+                total_systems: clients.length,
+                total_generation_today: enrichedClients.reduce((acc, curr) => acc + (curr.energy_today || 0), 0),
+                total_economy_month: totalEconomy
+            });
+        }
+    }, [clients.length, totalEconomy, enrichedClients.length]);
+
+    // Generate Chart Path for Total Systems Trend
+    const generatePath = () => {
+        if (!history || history.length < 2) return "M 0 60 Q 30 40, 60 50 T 100 10"; // Fallback static path
+        const points = history.slice(-10); // Last 10 days
+        const max = Math.max(...points.map(h => h.total_systems));
+        const min = Math.min(...points.map(h => h.total_systems));
+        const range = max - min || 1;
+
+        return points.map((p, i) => {
+            const x = (i / (points.length - 1)) * 100;
+            const y = 60 - ((p.total_systems - min) / range) * 50;
+            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+        }).join(' ');
+    };
+
     return (
         <div style={{ padding: '0 24px' }}>
             {/* Header com título real do VDS */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 500, color: 'var(--color-text-primary)' }}>Overview Dashboard</h2>
-            </div>
 
             {/* KPI Grid - 3 Columns with Animated Wide Charts */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
@@ -63,8 +91,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Wider Lateral Chart */}
                     <div style={{ position: 'absolute', right: '0', top: '16px', bottom: '56px', width: '45%', pointerEvents: 'none', paddingRight: '16px' }}>
                         <svg width="100%" height="100%" viewBox="0 0 100 60" preserveAspectRatio="none">
-                            <path d="M 0 60 Q 30 40, 60 50 T 100 10" fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" className="kpi-line" />
-                            <path d="M 0 60 Q 30 40, 60 50 T 100 10 L 100 60 L 0 60 Z" fill="var(--color-primary-muted)" style={{ opacity: 0.15 }} />
+                            <path d={generatePath()} fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" className="kpi-line" />
+                            <path d={`${generatePath()} L 100 60 L 0 60 Z`} fill="var(--color-primary-muted)" style={{ opacity: 0.15 }} />
                         </svg>
                     </div>
                     <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center' }}>
@@ -88,7 +116,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Wider Lateral Responsive Dynamic Bars */}
                     <div style={{ position: 'absolute', right: '16px', top: '24px', bottom: '56px', display: 'flex', alignItems: 'flex-end', gap: '4px', width: '40%', opacity: 0.8 }}>
                         {enrichedClients.slice(0, 8).map((c, i) => {
-                            const val = c.energy_today || (Math.random() * 5);
+                            const val = c.energy_today || 0;
                             const h = `${Math.max(15, Math.min(100, (val / 12) * 100))}%`;
                             return (
                                 <div key={c.id} className="kpi-bar" style={{ flex: 1, minWidth: '4px', borderRadius: '4px', height: h, transition: 'all 0.3s', animationDelay: `${0.1 * i}s` }}>
@@ -204,6 +232,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                                 <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sistema</th>
+                                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cidade</th>
                                 <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Conta Contrato</th>
                                 <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Plataforma</th>
                                 <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status do Relatório</th>
@@ -236,6 +265,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                                             </div>
                                             <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>{ac.name}</span>
                                         </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                                        {ac.city || '—'}
                                     </td>
                                     <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                                         {ac.uc}

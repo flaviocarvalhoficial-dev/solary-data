@@ -13,7 +13,7 @@ const DEFAULT_BRANDING: Branding = {
     company_name: 'Watts',
     primary_color: '#E8593C',
     secondary_color: '#1A1A1A',
-    logo_url: '',
+    logo_url: '/logo.svg',
     report_footer: 'Este relatório executivo foi gerado pelo sistema Watts • Veselty Engine.'
 };
 
